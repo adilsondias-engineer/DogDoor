@@ -1,0 +1,4 @@
+dependencies:
+  espressif/mdns: "*"
+  protocol_common:
+    path: ${project_dir}/components/protocol_common
