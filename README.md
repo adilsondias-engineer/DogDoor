@@ -1,6 +1,6 @@
 # DogDoor - Automated Dog Door Controller
 
-An ESP32-based automated dog door system that uses motion sensors, ultrasonic distance detection, and a stepper motor to automatically open and close a dog door.
+An ESP32-based automated dog door system that uses motion sensors, ultrasonic distance detection, and a stepper motor to automatically open and close a dog door. Built on ESP-IDF and FreeRTOS, running four concurrent, core-pinned real-time tasks coordinating over a shared door-state machine.
 
 ## Author
 
@@ -9,16 +9,46 @@ An ESP32-based automated dog door system that uses motion sensors, ultrasonic di
 ## Features
 
 - **Automated Door Control**: Automatically opens when motion is detected and closes when no motion is present
-- **Safety Features**: 
+- **Safety Features**:
   - Ultrasonic sensor to detect obstacles
   - Limit switches for door position detection
-  - Motion detection prevents closing if movement detected
-- **Remote Control**: 
+  - Motion detection prevents closing if movement detected, and reverses direction (closing → opening) if movement is detected mid-close
+- **Remote Control**:
   - HTTP web interface for manual control
   - MQTT support for home automation integration
 - **Network Connectivity**: WiFi and Ethernet support
 - **OTA Updates**: Over-the-air firmware updates
 - **Real-time Monitoring**: Web dashboard showing door status, sensor readings, and system uptime
+
+## Software Architecture
+
+The controller runs four concurrent FreeRTOS tasks, pinned to a dedicated core for deterministic timing, coordinating over a shared door-state machine (`OPEN → OPENING → CLOSING → FORCECLOSING → CLOSED`):
+
+```
+┌─────────────────────┐     ┌────────────────────────┐     ┌────────────────────┐
+│  Check_Sensor_Task  │     │ Check_Door_Opened_Task │     │Check_Door_Closed_  │
+│  (PIR in/out)       │     │  (limit switch)        │     │Task (limit switch) │
+└──────────┬──────────┘     └───────────┬────────────┘     └─────────┬──────────┘
+           │                            │                            │
+           └─────────────┬──────────────┴──────────────┬─────────────┘
+                         ▼                              ▼
+                 ┌──────────────────────────────────────────────┐
+                 │            currentDoorStatus                 │
+                 │  (shared state: OPEN/OPENING/CLOSING/...)    │
+                 └───────────────────┬──────────────────────────┘
+                                     ▼
+                        ┌──────────────────────────┐
+                        │     Handle_Door_Task     │
+                        │  (stepper motor control, │
+                        │   accel/decel profiles)  │
+                        └──────────────────────────┘
+
+              WiFi ──▶ HTTP server / MQTT client / NTP sync / OTA
+```
+
+- **Check_Sensor_Task** — polls indoor/outdoor PIR sensors, determines trigger source and sets `movimentDetected`
+- **Check_Door_Opened_Task / Check_Door_Closed_Task** — continuously poll the open/closed limit switches
+- **Handle_Door_Task** — owns the stepper motor: sets speed/accel/decel profile, drives open/close motion, and monitors limit-switch + motion-sensor flags mid-motion to trigger safety stops or direction reversal
 
 ## Hardware
 
@@ -40,7 +70,7 @@ This project features a **custom PCB designed on EasyEDA by Adilson Dias**, with
 ### Electronic Components
 
 - **Microcontroller**: ESP32 development board
-- **Motor System**: 
+- **Motor System**:
   - NEMA17 bipolar stepper motor
   - STEP/DIR compatible stepper driver
   - T20 lead screw (20mm pitch) for linear motion
