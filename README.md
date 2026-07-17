@@ -2,6 +2,8 @@
 
 An ESP32-based automated dog door system that uses motion sensors, ultrasonic distance detection, and a stepper motor to automatically open and close a dog door. Built on ESP-IDF and FreeRTOS, running four concurrent, core-pinned real-time tasks coordinating over a shared door-state machine.
 
+This is a full custom-designed automated dog door (ESP32/FreeRTOS) — self-designed aluminium frame, CO2-laser-cut acrylic panel, lead-screw linear actuation, custom PCB, and multi-task RTOS firmware with WiFi/MQTT/HTTP. In production 3+ years.
+
 ## Author
 
 **Adilson Dias** ([@adilsondias-engineer](https://github.com/adilsondias-engineer))
